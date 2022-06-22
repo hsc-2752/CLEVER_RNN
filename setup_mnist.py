@@ -21,6 +21,9 @@ from tensorflow.contrib.keras.api.keras.layers import Conv2D, MaxPooling2D
 from tensorflow.contrib.keras.api.keras.layers import Lambda
 from tensorflow.contrib.keras.api.keras.models import load_model
 from tensorflow.contrib.keras.api.keras import backend as K
+from tensorflow.keras import layers
+from keras.datasets import mnist
+from keras.utils import to_categorical
 
 def extract_data(filename, num_images):
     with gzip.open(filename) as bytestream:
@@ -65,41 +68,47 @@ class MNIST:
 
 class MNISTModel:
     def __init__(self, restore = None, session=None, use_softmax=False, use_brelu = False, activation = "relu"):
-        def bounded_relu(x):
-                return K.relu(x, max_value=1)
-        if use_brelu:
-            activation = bounded_relu
+        # def bounded_relu(x):
+        #         return K.relu(x, max_value=1)
+        # if use_brelu:
+        #     activation = bounded_relu
 
-        print("inside MNISTModel: activation = {}".format(activation))
+        # print("inside MNISTModel: activation = {}".format(activation))
 
         self.num_channels = 1
         self.image_size = 28
         self.num_labels = 10
+        units = 256
 
         model = Sequential()
+        model.add(layers.SimpleRNN(units=units,
+                        input_shape=(28, 28, 1)))
+        model.add(Dense(self.num_labels))
+        model.add(Activation('softmax'))
 
-        model.add(Conv2D(32, (3, 3),
-                         input_shape=(28, 28, 1)))
-        model.add(Activation(activation))
-        model.add(Conv2D(32, (3, 3)))
-        model.add(Activation(activation))
-        model.add(MaxPooling2D(pool_size=(2, 2)))
+
+        # model.add(Conv2D(32, (3, 3),
+        #                  input_shape=(28, 28, 1)))
+        # model.add(Activation(activation))
+        # model.add(Conv2D(32, (3, 3)))
+        # model.add(Activation(activation))
+        # model.add(MaxPooling2D(pool_size=(2, 2)))
         
-        model.add(Conv2D(64, (3, 3)))
-        model.add(Activation(activation))
-        model.add(Conv2D(64, (3, 3)))
-        model.add(Activation(activation))
-        model.add(MaxPooling2D(pool_size=(2, 2)))
+        # model.add(Conv2D(64, (3, 3)))
+        # model.add(Activation(activation))
+        # model.add(Conv2D(64, (3, 3)))
+        # model.add(Activation(activation))
+        # model.add(MaxPooling2D(pool_size=(2, 2)))
         
-        model.add(Flatten())
-        model.add(Dense(200))
-        model.add(Activation(activation))
-        model.add(Dense(200))
-        model.add(Activation(activation))
-        model.add(Dense(10))
+        # model.add(Flatten())
+        # model.add(Dense(200))
+        # model.add(Activation(activation))
+        # model.add(Dense(200))
+        # model.add(Activation(activation))
+        # model.add(Dense(10))
         # output log probability, used for black-box attack
-        if use_softmax:
-            model.add(Activation('softmax'))
+        # if use_softmax:
+        #     model.add(Activation('softmax'))
         if restore:
             model.load_weights(restore)
 

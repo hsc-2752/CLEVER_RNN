@@ -82,6 +82,8 @@ class EstimateLipschitz(object):
                         print("actviation = {}".format(activation))
                         model = MNISTModel("models/mnist_cnn_7layer_"+activation, self.sess, not output_logits, activation= activation)
                         time.sleep(5)
+                elif model_name == "rnn":
+                    model = MNISTModel("models_training/mnist_rnn_7layer_tanh", self.sess, not output_logits)
 
                 elif model_name == "brelu":
                     model =  MNISTModel("models/mnist_brelu", self.sess, not output_logits, use_brelu = True)

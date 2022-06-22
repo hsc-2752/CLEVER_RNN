@@ -30,6 +30,8 @@ from setup_mnist import MNIST
 from setup_cifar import CIFAR
 import argparse
 import os
+from keras.datasets import mnist
+from keras.utils import to_categorical
 
 # train nlayer MLP models
 def train(data, file_name, params, num_epochs=50, batch_size=256, train_temp=1, init=None, lr=0.01, decay=1e-5, momentum=0.9, activation="relu", optimizer_name="sgd"):
@@ -166,23 +168,65 @@ def train_cnn_7layer(data, file_name, params, num_epochs=50, batch_size=256, tra
 
 
 
+# def train_rnn(data, file_name, params, num_epochs=50, batch_size=256, train_temp=1, init=None, lr=0.01, decay=1e-5, momentum=0.9, activation="sigmoid", optimizer_name="sgd"):
+#     # create a Keras sequential model
+#     model = Sequential()
+
+#     print("training data shape = {}".format(data.train_data.shape))
+
+#     # define model structure
+#     model.add(layers.SimpleRNN(256,input_shape = (28,28),activation='tanh', return_sequences=True))
+#     model.add(Dense(10, activation='sigmoid'))
+
+#     model.compile(optimizer='adam', loss='mae', metrics=['accuracy'])
+
+#     model.summary()
+#     print("Traing a {} layer model, saving to {}".format(len(params) + 1, file_name))
+#     # run training with given dataset, and print progress
+#     history = model.fit(data.train_data, data.train_labels, batch_size, epochs=num_epochs, validation_data=(data.validation_data, data.validation_labels),shuffle=True)
+#     # save model to a file
+#     if file_name != None:
+#         model.save(file_name)
+#         print('model saved to ', file_name)
+    
+#     return {'model':model, 'history':history}
+
 def train_rnn(data, file_name, params, num_epochs=50, batch_size=256, train_temp=1, init=None, lr=0.01, decay=1e-5, momentum=0.9, activation="sigmoid", optimizer_name="sgd"):
-    # create a Keras sequential model
+
+    (x_train, y_train), (x_test, y_test) = mnist.load_data()
+    num_labels = len(np.unique(y_train))
+
+    # convert to one-hot vector
+    y_train = to_categorical(y_train)
+    y_test = to_categorical(y_test)
+
+    # resize and normalize
+    image_size = x_train.shape[1]
+    x_train = np.reshape(x_train,[-1, image_size, image_size])
+    x_test = np.reshape(x_test,[-1, image_size, image_size])
+    x_train = x_train.astype('float32') / 255
+    x_test = x_test.astype('float32') / 255
+
+    # network parameters
+    input_shape = (image_size, image_size)
+    #batch_size = 128
+    units = 256
+    dropout = 0.2
+
+    # model is RNN with 256 units, input is 28-dim vector 28 timesteps
     model = Sequential()
-
-    print("training data shape = {}".format(data.train_data.shape))
-
-    # define model structure
-    model.add(layers.SimpleRNN(input_shape = data.train_data.shape,activation='tanh', return_sequences=True))
-    model.add(Dense(10, activation='sigmoid'))
-
-    model.compile(optimizer='adam', loss='mae', metrics=['accuracy'])
-
+    model.add(layers.SimpleRNN(units=units,
+                        input_shape=input_shape))
+    model.add(Dense(num_labels))
+    model.add(Activation('softmax'))
     model.summary()
-    print("Traing a {} layer model, saving to {}".format(len(params) + 1, file_name))
-    # run training with given dataset, and print progress
-    history = model.fit(data.train_data, data.train_labels, batch_size, epochs=num_epochs, validation_data=(data.validation_data, data.validation_labels),shuffle=True)
-    # save model to a file
+
+    model.compile(loss='categorical_crossentropy',
+                  optimizer='sgd',
+                  metrics=['accuracy'])
+    # train the network
+    history = model.fit(x_train, y_train, epochs=num_epochs, batch_size=batch_size)
+
     if file_name != None:
         model.save(file_name)
         print('model saved to ', file_name)
