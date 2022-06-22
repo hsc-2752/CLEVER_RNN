@@ -20,6 +20,7 @@ from tensorflow.contrib.keras.api.keras.models import load_model
 from tensorflow.contrib.keras.api.keras import backend as K
 from tensorflow.contrib.keras.api.keras.optimizers import SGD, Adam
 import tensorflow as tf
+from tensorflow.keras import layers
 config = tf.ConfigProto()
 config.gpu_options.allow_growth = True
 K.set_session(tf.Session(config=config))
@@ -164,6 +165,32 @@ def train_cnn_7layer(data, file_name, params, num_epochs=50, batch_size=256, tra
     return {'model':model, 'history':history}
 
 
+
+def train_rnn(data, file_name, params, num_epochs=50, batch_size=256, train_temp=1, init=None, lr=0.01, decay=1e-5, momentum=0.9, activation="sigmoid", optimizer_name="sgd"):
+    # create a Keras sequential model
+    model = Sequential()
+
+    print("training data shape = {}".format(data.train_data.shape))
+
+    # define model structure
+    model.add(layers.SimpleRNN(input_shape = data.train_data.shape,activation='tanh', return_sequences=True))
+    model.add(Dense(10, activation='sigmoid'))
+
+    model.compile(optimizer='adam', loss='mae', metrics=['accuracy'])
+
+    model.summary()
+    print("Traing a {} layer model, saving to {}".format(len(params) + 1, file_name))
+    # run training with given dataset, and print progress
+    history = model.fit(data.train_data, data.train_labels, batch_size, epochs=num_epochs, validation_data=(data.validation_data, data.validation_labels),shuffle=True)
+    # save model to a file
+    if file_name != None:
+        model.save(file_name)
+        print('model saved to ', file_name)
+    
+    return {'model':model, 'history':history}
+
+
+
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='train n-layer MNIST and CIFAR MLP or CNN 7-layer models')
     parser.add_argument('--model', 
@@ -178,7 +205,7 @@ if __name__ == '__main__':
                 help='folder for saving trained models')
     parser.add_argument('--modeltype', 
                 default="mlp",
-                choices=["mlp", "cnn"],
+                choices=["mlp", "cnn","rnn"], # add the rnn option (0622hsc)
                 help='model type')
     parser.add_argument('layer_parameters',
                 nargs='+',
@@ -213,6 +240,8 @@ if __name__ == '__main__':
             file_name = args.modelpath+"/"+args.model+"_"+args.modeltype+"_"+str(nlayers)+"layer_"+args.activation+"_"+args.layer_parameters[0]
         elif args.modeltype == "cnn":
             file_name = args.modelpath+"/"+args.model+"_"+args.modeltype+"_"+str(nlayers)+"layer_"+args.activation
+        elif args.modeltype == "rnn":
+            file_name = args.modelpath+"/"+args.model+"_"+args.modeltype+"_"+str(nlayers)+"layer_"+args.activation
             
     else:
         file_name = args.modelfile
@@ -246,6 +275,8 @@ if __name__ == '__main__':
         train(data, file_name=file_name, params=args.layer_parameters, num_epochs=args.epochs, lr=args.lr, decay=args.wd, activation=args.activation, optimizer_name=args.optimizer)
     elif args.modeltype == "cnn":
         train_cnn_7layer(data, file_name=file_name, params=args.layer_parameters, num_epochs=args.epochs, lr=args.lr, decay=args.wd, activation=args.activation, optimizer_name=args.optimizer)
+    elif args.modeltype == "rnn":
+        train_rnn(data, file_name=file_name, params=args.layer_parameters, num_epochs=args.epochs, lr=args.lr, decay=args.wd, activation=args.activation, optimizer_name=args.optimizer)
    
 
     # 2-layer models
