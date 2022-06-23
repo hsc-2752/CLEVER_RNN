@@ -22,7 +22,7 @@ from tensorflow.contrib.keras.api.keras.layers import Lambda
 from tensorflow.contrib.keras.api.keras.models import load_model
 from tensorflow.contrib.keras.api.keras import backend as K
 from tensorflow.keras import layers
-from keras.datasets import mnist
+
 from keras.utils import to_categorical
 
 def extract_data(filename, num_images):
@@ -80,9 +80,11 @@ class MNISTModel:
         self.num_labels = 10
         units = 256
 
+        input_shape = (self.image_size, self.image_size)
+
         model = Sequential()
         model.add(layers.SimpleRNN(units=units,
-                        input_shape=(28, 28, 1)))
+                        input_shape=(28,28)))
         model.add(Dense(self.num_labels))
         model.add(Activation('softmax'))
 
@@ -121,6 +123,9 @@ class MNISTModel:
         self.layer_outputs = layer_outputs
 
     def predict(self, data):
+        # resize and normalize
+        data = np.reshape(data,[-1, 28, 28])
+        data = data.astype('float32') / 255
         return self.model(data)
 
 class TwoLayerMNISTModel:

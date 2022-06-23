@@ -31,7 +31,7 @@ from setup_cifar import CIFAR
 import argparse
 import os
 from keras.datasets import mnist
-from keras.utils import to_categorical
+from keras.utils import to_categorical, plot_model
 
 # train nlayer MLP models
 def train(data, file_name, params, num_epochs=50, batch_size=256, train_temp=1, init=None, lr=0.01, decay=1e-5, momentum=0.9, activation="relu", optimizer_name="sgd"):
@@ -168,31 +168,17 @@ def train_cnn_7layer(data, file_name, params, num_epochs=50, batch_size=256, tra
 
 
 
-# def train_rnn(data, file_name, params, num_epochs=50, batch_size=256, train_temp=1, init=None, lr=0.01, decay=1e-5, momentum=0.9, activation="sigmoid", optimizer_name="sgd"):
-#     # create a Keras sequential model
-#     model = Sequential()
-
-#     print("training data shape = {}".format(data.train_data.shape))
-
-#     # define model structure
-#     model.add(layers.SimpleRNN(256,input_shape = (28,28),activation='tanh', return_sequences=True))
-#     model.add(Dense(10, activation='sigmoid'))
-
-#     model.compile(optimizer='adam', loss='mae', metrics=['accuracy'])
-
-#     model.summary()
-#     print("Traing a {} layer model, saving to {}".format(len(params) + 1, file_name))
-#     # run training with given dataset, and print progress
-#     history = model.fit(data.train_data, data.train_labels, batch_size, epochs=num_epochs, validation_data=(data.validation_data, data.validation_labels),shuffle=True)
-#     # save model to a file
-#     if file_name != None:
-#         model.save(file_name)
-#         print('model saved to ', file_name)
-    
-#     return {'model':model, 'history':history}
-
 def train_rnn(data, file_name, params, num_epochs=50, batch_size=256, train_temp=1, init=None, lr=0.01, decay=1e-5, momentum=0.9, activation="sigmoid", optimizer_name="sgd"):
+    # # create a Keras sequential model
+    # model = Sequential()
 
+    # print("training data shape = {}".format(data.train_data.shape))
+
+    # # define model structure
+    # model.add(layers.SimpleRNN(256,input_shape = (data.train_data.shape[1],data.train_data.shape[2]),activation='tanh', return_sequences=True))
+    # model.add(Dense(10, activation='sigmoid'))
+    # model.add(Activation('softmax'))
+    # compute the number of labels
     (x_train, y_train), (x_test, y_test) = mnist.load_data()
     num_labels = len(np.unique(y_train))
 
@@ -209,6 +195,8 @@ def train_rnn(data, file_name, params, num_epochs=50, batch_size=256, train_temp
 
     # network parameters
     input_shape = (image_size, image_size)
+    print(input_shape)
+    
     #batch_size = 128
     units = 256
     dropout = 0.2
@@ -221,12 +209,22 @@ def train_rnn(data, file_name, params, num_epochs=50, batch_size=256, train_temp
     model.add(Activation('softmax'))
     model.summary()
 
+    # loss function for one-hot vector
+    # use of sgd optimizer
+    # accuracy is good metric for classification tasks
     model.compile(loss='categorical_crossentropy',
                   optimizer='sgd',
                   metrics=['accuracy'])
     # train the network
     history = model.fit(x_train, y_train, epochs=num_epochs, batch_size=batch_size)
 
+    # model.compile(optimizer='sgd', loss='categorical_crossentropy', metrics=['accuracy'])
+
+    # model.summary()
+    # print("Traing a {} layer model, saving to {}".format(len(params) + 1, file_name))
+    # # run training with given dataset, and print progress
+    # history = model.fit(data.train_data, data.train_labels, batch_size, epochs=num_epochs, validation_data=(data.validation_data, data.validation_labels),shuffle=True)
+    # # save model to a file
     if file_name != None:
         model.save(file_name)
         print('model saved to ', file_name)
