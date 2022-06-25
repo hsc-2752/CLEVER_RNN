@@ -144,7 +144,22 @@ def get_best_weibull_fit(sample, use_reg = False, shape_reg = 0.01):
 # Return the Weibull position parameter
 def get_lipschitz_estimate(G_max, norm = "L2", figname = "", use_reg = False, shape_reg = 0.01):
     global plot_res 
-    c_init, c, loc, scale, ks, pVal = get_best_weibull_fit(G_max, use_reg, shape_reg)
+    c_init_list = []
+    c_list = []
+    loc_list = []
+    scale_list = []
+    ks_list = []
+    pVal_list = []
+    Lips_est_list = []
+    for i in range(28):
+        c_init, c, loc, scale, ks, pVal = get_best_weibull_fit(G_max[i], use_reg, shape_reg)
+        c_init_list.append(c_init)
+        c_list.append(c)
+        loc_list.append(loc)
+        scale_list.append(scale)
+        ks_list.append(ks)
+        pVal_list.append(pVal)
+        Lips_est_list.append(-loc)
     
     # the norm here is Lipschitz constant norm, not the bound's norm
     if norm == "L1":
@@ -164,7 +179,8 @@ def get_lipschitz_estimate(G_max, norm = "L2", figname = "", use_reg = False, sh
         figname = figname + '_'+ "L"+ p + ".png"
         plot_res = pool.apply_async(plot_weibull, (G_max,c,loc,scale,ks,pVal,p,q,figname))
     
-    return {'Lips_est':-loc, 'shape':c, 'loc': loc, 'scale': scale, 'ks': ks, 'pVal': pVal}
+    #return {'Lips_est':-loc, 'shape':c, 'loc': loc, 'scale': scale, 'ks': ks, 'pVal': pVal}
+    return {'Lips_est':Lips_est_list, 'shape':c_list, 'loc': loc, 'scale': scale_list, 'ks': ks_list, 'pVal': pVal_list}
     #return np.max(G_max)
 
 # file name contains some information, like true_id, true_label and target_label
@@ -262,7 +278,7 @@ if __name__ == "__main__":
         # ['Li_max', 'pred', 'G1_max', 'g_x0', 'path', 'info', 'G2_max', 'true_label', 'args', 'L1_max', 'Gi_max', 'L2_max', 'id', 'target_label']
         mat = sio.loadmat(fname)
         print('loading {}'.format(fname))
-        
+        #在这里读入list，赋给G
         if order == "1" and args['use_slope']:
             G1_max = np.squeeze(mat['L1_max'])
             G2_max = np.squeeze(mat['L2_max'])
@@ -377,9 +393,9 @@ if __name__ == "__main__":
             raise RuntimeError("method not supported")
                 
         # the estimated Lipschitz constant
-        Lip_G1 = Est_G1['Lips_est']
-        Lip_G2 = Est_G2['Lips_est']
-        Lip_Gi = Est_Gi['Lips_est']
+        Lip_G1 = sum(Est_G1['Lips_est'])
+        Lip_G2 = sum(Est_G2['Lips_est'])
+        Lip_Gi = sum(Est_Gi['Lips_est'])
         
         # the estimated shape parameter (c) in Weibull distn 
         shape_G1 = Est_G1['shape']
@@ -409,6 +425,7 @@ if __name__ == "__main__":
         
         # compute robustness bound
         if order == "1": 
+            #TODO
             bnd_L1 = g_x0 / Lip_Gi
             bnd_L2 = g_x0 / Lip_G2
             bnd_Li = g_x0 / Lip_G1

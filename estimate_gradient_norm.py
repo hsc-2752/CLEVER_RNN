@@ -149,12 +149,26 @@ class EstimateLipschitz(object):
         # get the difference
         self.objective = true_output - target_output
         # get the gradient(deprecated arguments)
-        self.grad_op = tf.gradients(self.objective, self.img)[0]
-        # compute gradient norm: (in computation graph, so is faster)
-        grad_op_rs = tf.reshape(self.grad_op, (tf.shape(self.grad_op)[0], -1))
-        self.grad_2_norm_op = tf.norm(grad_op_rs, axis = 1)
-        self.grad_1_norm_op = tf.norm(grad_op_rs, ord=1, axis = 1)
-        self.grad_inf_norm_op = tf.norm(grad_op_rs, ord=np.inf, axis = 1)
+        self.grad_2_list = []
+        self.grad_1_list = []
+        self.grad_inf_list = []
+        for i in range(28):
+            grad_op = tf.gradients(self.objective, self.img)[0][:,i,:,:]
+            # compute gradient norm: (in computation graph, so is faster)
+            grad_op_rs = tf.reshape(grad_op, (tf.shape(grad_op)[0], -1))
+            grad_2_norm_op = tf.norm(grad_op_rs, axis = 1)
+            grad_1_norm_op = tf.norm(grad_op_rs, ord=1, axis = 1)
+            grad_inf_norm_op = tf.norm(grad_op_rs, ord=np.inf, axis = 1)
+            self.grad_2_list.append(grad_2_norm_op)
+            self.grad_1_list.append(grad_1_norm_op)
+            self.grad_inf_list.append(grad_inf_norm_op)
+            self.grad_op = grad_op
+        # self.grad_op = tf.gradients(self.objective, self.img)[0]
+        # # compute gradient norm: (in computation graph, so is faster)
+        # grad_op_rs = tf.reshape(self.grad_op, (tf.shape(self.grad_op)[0], -1))
+        # self.grad_2_norm_op = tf.norm(grad_op_rs, axis = 1)
+        # self.grad_1_norm_op = tf.norm(grad_op_rs, ord=1, axis = 1)
+        # self.grad_inf_norm_op = tf.norm(grad_op_rs, ord=np.inf, axis = 1)
         
         ### Lily: added Hessian-vector product calculation here for 2nd order bound:
         if order == 2:
@@ -266,7 +280,7 @@ class EstimateLipschitz(object):
         """
         # get the original prediction and gradient, gradient norms values on input image:
         pred, grad_val, grad_2_norm_val, grad_1_norm_val, grad_inf_norm_val = self.sess.run(
-          [self.output, self.grad_op, self.grad_2_norm_op, self.grad_1_norm_op, self.grad_inf_norm_op], 
+          [self.output, self.grad_op, self.grad_2_list, self.grad_1_list, self.grad_inf_list], 
           feed_dict = {self.img: [input_image], self.true_label: true_label, self.target_label: target_label})
         pred = np.squeeze(pred)
         # print(pred)
@@ -278,13 +292,27 @@ class EstimateLipschitz(object):
         # get g_x0 = f_c(x_0) - f_j(x_0)
         g_x0 = pred[c] - pred[j]
         # grad_z_norm should be scalar
-        g_x0_grad_2_norm = np.squeeze(grad_2_norm_val)
-        g_x0_grad_1_norm = np.squeeze(grad_1_norm_val)
-        g_x0_grad_inf_norm = np.squeeze(grad_inf_norm_val)
+
+        #Modified to list of each time input (HSC_0625)
+        # g_x0_grad_2_norm = np.squeeze(grad_2_norm_val)
+        # g_x0_grad_1_norm = np.squeeze(grad_1_norm_val)
+        # g_x0_grad_inf_norm = np.squeeze(grad_inf_norm_val)
+        g_x0_grad_2_norm = []
+        g_x0_grad_1_norm = []
+        g_x0_grad_inf_norm = []
+        for grad_2_val in grad_2_norm_val:
+            g_x0_grad_2_norm.append(np.squeeze(grad_2_val))
+        for grad_1_val in grad_1_norm_val:
+            g_x0_grad_1_norm.append(np.squeeze(grad_1_val))
+        for grad_inf_val in grad_inf_norm_val:
+            g_x0_grad_inf_norm.append(np.squeeze(grad_inf_val))
+
+
+
 
         print("** Evaluating g_x0, grad_2_norm_val on the input image x0: ")
         print("shape of input_image = {}".format(input_image.shape))
-        print("g_x0 = {:.3f}, grad_2_norm_val = {:3f}, grad_1_norm_val = {:.3f}, grad_inf_norm_val = {:3f}".format(g_x0, g_x0_grad_2_norm, g_x0_grad_1_norm, g_x0_grad_inf_norm))
+        #print("g_x0 = {:.3f}, grad_2_norm_val = {:3f}, grad_1_norm_val = {:.3f}, grad_inf_norm_val = {:3f}".format(g_x0, g_x0_grad_2_norm, g_x0_grad_1_norm, g_x0_grad_inf_norm))
 
         ##### Lily #####
         if order == 2: # evaluate the hv and hv norm on input_image
@@ -386,6 +414,34 @@ class EstimateLipschitz(object):
             G2 = np.zeros(num)
             G1 = np.zeros(num)
             Gi = np.zeros(num)
+            L2_max_list = []
+            L1_max_list = []
+            Li_max_list = []
+            L2_list = []
+            L1_list = []
+            Li_list = []
+            G2_max_list = []
+            G1_max_list = []
+            Gi_max_list = []
+            G2_list = []
+            G1_list = []
+            Gi_list = []
+            for i in range(28):
+                L2_max_list.append(L2_max)
+                L1_max_list.append(L1_max)
+                Li_max_list.append(Li_max)
+                L2_list.append(L2)
+                L1_list.append(L1)
+                Li_list.append(Li)
+                G2_max_list.append(G2_max)
+                G1_max_list.append(G1_max)
+                Gi_max_list.append(Gi_max)
+                G2_list.append(G2)
+                G1_list.append(G1)
+                Gi_list.append(Gi)
+
+
+
         elif order == 2:
             # store the max H in each iteration
             H2_max = np.zeros(Niters)
@@ -460,8 +516,11 @@ class EstimateLipschitz(object):
                 
                 if order == 1:
                     # run inference and get the gradient
+                    # perturbed_predicts, perturbed_grad_2_norm, perturbed_grad_1_norm, perturbed_grad_inf_norm = self.sess.run(
+                    #         [self.output, self.grad_2_norm_op, self.grad_1_norm_op, self.grad_inf_norm_op], 
+                    #         feed_dict = {self.img: batch_inputs, self.target_label: target_label, self.true_label: true_label})
                     perturbed_predicts, perturbed_grad_2_norm, perturbed_grad_1_norm, perturbed_grad_inf_norm = self.sess.run(
-                            [self.output, self.grad_2_norm_op, self.grad_1_norm_op, self.grad_inf_norm_op], 
+                            [self.output, self.grad_2_list, self.grad_1_list, self.grad_inf_list], 
                             feed_dict = {self.img: batch_inputs, self.target_label: target_label, self.true_label: true_label})
 
                     if self.compute_slope:
@@ -481,12 +540,24 @@ class EstimateLipschitz(object):
                         L2[L_counter : L_counter + batch_size//2] = batch_L2
                         L1[L_counter : L_counter + batch_size//2] = batch_L1
                         Li[L_counter : L_counter + batch_size//2] = batch_Li
-                    
-                    G2[G_counter : G_counter + batch_size] = perturbed_grad_2_norm
-                    G1[G_counter : G_counter + batch_size] = perturbed_grad_1_norm
-                    Gi[G_counter : G_counter + batch_size] = perturbed_grad_inf_norm
-                    L_counter += (batch_size//2)
-                    G_counter += batch_size
+                    #TODO
+                    # for i in range(28):
+                    #     print("--------")
+                    #     print(i)
+                    #     print(G2_list[i-1])
+                    #     print(G2_list[i])
+                    #     print(perturbed_grad_2_norm[i])
+                    #     print("---------")
+                    #     G2_list[i][G_counter : G_counter + batch_size] = perturbed_grad_2_norm[i]
+                    #     G1_list[i][G_counter : G_counter + batch_size] = perturbed_grad_1_norm[i]
+                    #     Gi_list[i][G_counter : G_counter + batch_size] = perturbed_grad_inf_norm[i]
+                    #     L_counter += (batch_size//2)
+                    #     G_counter += batch_size
+                        G2_list[:][G_counter : G_counter + batch_size] = perturbed_grad_2_norm
+                        G1_list[:][G_counter : G_counter + batch_size] = perturbed_grad_1_norm
+                        Gi_list[:][G_counter : G_counter + batch_size] = perturbed_grad_inf_norm
+                        L_counter += (batch_size//2)
+                        G_counter += batch_size
             
                 elif order == 2: 
                 ##### Lily #####
@@ -542,29 +613,34 @@ class EstimateLipschitz(object):
                     H_counter += batch_size
 
             if order == 1:
+                for i in range(28):
                 # at the end of each iteration: get the per-iteration max gradient norm
-                if self.compute_slope:
-                    L2_max[iters] = np.max(L2)
-                    L1_max[iters] = np.max(L1)
-                    Li_max[iters] = np.max(Li)
-                G2_max[iters] = np.max(G2)
-                G1_max[iters] = np.max(G1)
-                Gi_max[iters] = np.max(Gi)
+                    if self.compute_slope:
+                        L2_max[i][iters] = np.max(L2[i])
+                        L1_max[i][iters] = np.max(L1[i])
+                        Li_max[i][iters] = np.max(Li[i])
+
+                    G2_max_list[i][iters] = np.max(G2_list[i])
+                    G1_max_list[i][iters] = np.max(G1_list[i])
+                    Gi_max_list[i][iters] = np.max(Gi_list[i])
+                    G2_list[i].fill(0)
+                    G1_list[i].fill(0)
+                    Gi_list[i].fill(0)
                 
                 
-                if self.compute_slope:
-                    print('[STATS][L2] loop = {}, time = {:.5g}, iter_time = {:.5g}, overhead = {:.5g}, L2 = {:.5g}, L1 = {:.5g}, Linf = {:.5g}, G2 = {:.5g}, G1 = {:.5g}, Ginf = {:.5g}'.format(iters, time.time() - search_begin_time, time.time() - iter_begin_time, overhead_time, L2_max[iters], L1_max[iters], Li_max[iters], G2_max[iters], G1_max[iters], Gi_max[iters]))
-                else:
-                    print('[STATS][L2] loop = {}, time = {:.5g}, iter_time = {:.5g}, overhead = {:.5g}, G2 = {:.5g}, G1 = {:.5g}, Ginf = {:.5g}'.format(iters, time.time() - search_begin_time, time.time() - iter_begin_time, overhead_time, G2_max[iters], G1_max[iters], Gi_max[iters]))
+                # if self.compute_slope:
+                #     print('[STATS][L2] loop = {}, time = {:.5g}, iter_time = {:.5g}, overhead = {:.5g}, L2 = {:.5g}, L1 = {:.5g}, Linf = {:.5g}, G2 = {:.5g}, G1 = {:.5g}, Ginf = {:.5g}'.format(iters, time.time() - search_begin_time, time.time() - iter_begin_time, overhead_time, L2_max[iters], L1_max[iters], Li_max[iters], G2_max[iters], G1_max[iters], Gi_max[iters]))
+                # else:
+                #     print('[STATS][L2] loop = {}, time = {:.5g}, iter_time = {:.5g}, overhead = {:.5g}, G2 = {:.5g}, G1 = {:.5g}, Ginf = {:.5g}'.format(iters, time.time() - search_begin_time, time.time() - iter_begin_time, overhead_time, G2_max[iters], G1_max[iters], Gi_max[iters]))
                 sys.stdout.flush()
                 # reset per iteration L and G by filling 0
-                if self.compute_slope:
-                    L2.fill(0)
-                    L1.fill(0)
-                    Li.fill(0)
-                G2.fill(0)
-                G1.fill(0)
-                Gi.fill(0)
+                # if self.compute_slope:
+                #     L2.fill(0)
+                #     L1.fill(0)
+                #     Li.fill(0)
+                # G2.fill(0)
+                # G1.fill(0)
+                # Gi.fill(0)
             elif order == 2:
                 ## consider -lambda_min  
                 idx = H2 > 0
@@ -575,19 +651,19 @@ class EstimateLipschitz(object):
                 print('[STATS][L2] loop = {}, time = {:.5g}, iter_time = {:.5g}, overhead = {:.5g}, H2 = {:.5g}'.format(iters, time.time() - search_begin_time, time.time() - iter_begin_time, overhead_time, H2_max[iters]))
 
         if order == 1:
-            print('[STATS][L1] g_x0 = {:.5g}, L2_max = {:.5g}, L1_max = {:.5g}, Linf_max = {:.5g}, G2_max = {:.5g}, G1_max = {:.5g}, Ginf_max = {:.5g}'.format(
-                   g_x0, np.max(L2_max), np.max(L1_max), np.max(Li_max), np.max(G2_max), np.max(G1_max), np.max(Gi_max)))
-            # when compute the bound we need the DUAL norm
-            if self.compute_slope:
-                print('[STATS][L1] bnd_L2_max = {:.5g}, bnd_L1_max = {:.5g}, bnd_Linf_max = {:.5g}, bnd_G2_max = {:.5g}, bnd_G1_max = {:.5g}, bnd_Ginf_max = {:.5g}'.format(g_x0/np.max(L2_max), g_x0/np.max(Li_max), g_x0/np.max(L1_max), g_x0/np.max(G2_max), g_x0/np.max(Gi_max), g_x0/np.max(G1_max)))
-            else:
-                print('[STATS][L1] bnd_G2_max = {:.5g}, bnd_G1_max = {:.5g}, bnd_Ginf_max = {:.5g}'.format(g_x0/np.max(G2_max), g_x0/np.max(Gi_max), g_x0/np.max(G1_max)))
+            # print('[STATS][L1] g_x0 = {:.5g}, L2_max = {:.5g}, L1_max = {:.5g}, Linf_max = {:.5g}, G2_max = {:.5g}, G1_max = {:.5g}, Ginf_max = {:.5g}'.format(
+            #        g_x0, np.max(L2_max), np.max(L1_max), np.max(Li_max), np.max(G2_max), np.max(G1_max), np.max(Gi_max)))
+            # # when compute the bound we need the DUAL norm
+            # if self.compute_slope:
+            #     print('[STATS][L1] bnd_L2_max = {:.5g}, bnd_L1_max = {:.5g}, bnd_Linf_max = {:.5g}, bnd_G2_max = {:.5g}, bnd_G1_max = {:.5g}, bnd_Ginf_max = {:.5g}'.format(g_x0/np.max(L2_max), g_x0/np.max(Li_max), g_x0/np.max(L1_max), g_x0/np.max(G2_max), g_x0/np.max(Gi_max), g_x0/np.max(G1_max)))
+            # else:
+            #     print('[STATS][L1] bnd_G2_max = {:.5g}, bnd_G1_max = {:.5g}, bnd_Ginf_max = {:.5g}'.format(g_x0/np.max(G2_max), g_x0/np.max(Gi_max), g_x0/np.max(G1_max)))
             
             sys.stdout.flush()
 
             # discard the last batch of samples
             sample_results.get()
-            return [L2_max,L1_max,Li_max,G2_max,G1_max,Gi_max,g_x0,pred]
+            return [L2_max_list,L1_max_list,Li_max_list,G2_max_list,G1_max_list,Gi_max_list,g_x0,pred]
         
         elif order == 2:
             # find positive eig value and substitute with its corresponding negative eig value, then we only need to sort once
